@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UPI Offline Mesh Demo</title>
+    <style>
+        :root { color-scheme: dark; --bg:#07111f; --panel:#111d2d; --line:#26354a; --cyan:#55d9c0; }
+        body { margin:0; font-family:Inter,Segoe UI,sans-serif; background:var(--bg); color:#e8f0fb; }
+        header { padding:24px 32px; border-bottom:1px solid var(--line); }
+        h1 { margin:0; color:var(--cyan); }
+        main { display:grid; grid-template-columns:320px 1fr; gap:16px; padding:16px 32px 32px; }
+        section, aside { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+        label { display:block; margin-top:12px; color:#9fb2c9; }
+        input, select { width:100%; box-sizing:border-box; margin-top:6px; padding:10px; border-radius:7px; border:1px solid var(--line); background:#091421; color:white; }
+        button { margin-top:12px; padding:10px 12px; border:0; border-radius:7px; background:var(--cyan); color:#09201b; font-weight:700; cursor:pointer; }
+        button.secondary { background:#26354a; color:white; }
+        table { width:100%; border-collapse:collapse; margin-top:8px; }
+        th, td { border-bottom:1px solid var(--line); text-align:left; padding:9px; }
+        .devices { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+        .device { border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; }
+        .bridge { border-color:#f7bd58; }
+        #log { min-height:70px; color:#9fb2c9; }
+        @media(max-width:900px) { main { grid-template-columns:1fr; } .devices { grid-template-columns:repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+<header><h1>UPI Offline Mesh</h1><p>Encrypted packet gossip and deferred settlement demo</p></header>
+<main>
+    <aside>
+        <h2>Compose payment</h2>
+        <label>Sender<select id="sender"><option>alice</option><option>bob</option><option>carol</option><option>dave</option></select></label>
+        <label>Receiver<select id="receiver"><option>bob</option><option>carol</option><option>dave</option><option>alice</option></select></label>
+        <label>Amount<input id="amount" type="number" value="500" min="0.01" step="0.01"></label>
+        <label>PIN<input id="pin" type="password" value="1234"></label>
+        <button onclick="sendPayment()">Inject into Mesh</button>
+        <button class="secondary" onclick="gossip()">Run Gossip Round</button>
+        <button class="secondary" onclick="flush()">Bridges Upload to Backend</button>
+        <button class="secondary" onclick="resetMesh()">Reset Mesh</button>
+        <div id="log"></div>
+    </aside>
+    <section>
+        <h2>Virtual devices</h2>
+        <div id="devices" class="devices"></div>
+        <h2>Account balances</h2>
+        <table><thead><tr><th>Account</th><th>Balance</th></tr></thead><tbody id="accounts"></tbody></table>
+        <h2>Transaction ledger</h2>
+        <table><thead><tr><th>ID</th><th>Sender</th><th>Receiver</th><th>Amount</th><th>Packet Hash</th></tr></thead><tbody id="transactions"></tbody></table>
+    </section>
+</main>
+<script>
+async function refresh() {
+    const accounts = await (await fetch('/api/accounts')).json();
+    document.getElementById('accounts').innerHTML = accounts.map(a =>
+        `<tr><td>${a.accountName}</td><td>₹${Number(a.balance).toFixed(2)}</td></tr>`).join('');
+    const transactions = await (await fetch('/api/transactions')).json();
+    document.getElementById('transactions').innerHTML = transactions.map(t =>
+        `<tr><td>${t.id}</td><td>${t.sender}</td><td>${t.receiver}</td><td>₹${Number(t.amount).toFixed(2)}</td><td>${t.packetHash.substring(0,16)}...</td></tr>`).join('');
+}
+async function meshState() {
+    const response = await fetch('/api/mesh/state').catch(() => null);
+}
+async function sendPayment() {
+    const body = {sender:sender.value, receiver:receiver.value, amount:Number(amount.value), pin:pin.value};
+    const r = await fetch('/api/demo/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    document.getElementById('log').textContent = r.ok ? 'Encrypted payment injected into phone-alice.' : 'Payment injection failed.';
+    await loadDevices();
+}
+async function gossip() {
+    const r = await fetch('/api/mesh/gossip',{method:'POST'}).then(x=>x.json());
+    document.getElementById('log').textContent = `Gossip round delivered ${r.newDeliveries} packets.`;
+    renderDevices(r.mesh); await refresh();
+}
+async function flush() {
+    const r = await fetch('/api/mesh/flush',{method:'POST'}).then(x=>x.json());
+    document.getElementById('log').textContent = r.uploads.map(u=>u.outcome).join(', ') || 'No packets on bridge.';
+    renderDevices(r.mesh); await refresh();
+}
+async function resetMesh() {
+    const r = await fetch('/api/mesh/reset',{method:'POST'}).then(x=>x.json());
+    document.getElementById('log').textContent = 'Mesh and idempotency cache reset.';
+    renderDevices(r.mesh); await refresh();
+}
+function renderDevices(devices) {
+    document.getElementById('devices').innerHTML = devices.map(d =>
+        `<div class="device ${d.hasInternet?'bridge':''}"><strong>${d.id}</strong><br>${d.packetCount} packets<br>${d.hasInternet?'Internet bridge':'Offline'}</div>`).join('');
+}
+async function loadDevices() {
+    const devices = await fetch('/api/mesh/state').then(x=>x.json());
+    renderDevices(devices);
+}
+refresh();
+</script>
+</body>
+</html>
