@@ -87,22 +87,55 @@ The H2 console is enabled at `/h2-console` for local development. It is not secu
 ## Project layout
 
 ```text
-src/main/java/com/demo/upimesh/
-  controller/  HTTP API and dashboard routes
-  crypto/      Ephemeral server key pair and hybrid encryption
-  model/       JPA entities, repositories, and packet records
-  service/     Demo setup, mesh simulation, ingestion, idempotency, settlement
-src/main/resources/
-  application.properties
-  templates/dashboard.html
-src/test/java/com/demo/upimesh/
-  HybridCryptoTest.java
-  IdempotencyConcurrencyTest.java
-docs/
-  API.md
-  ARCHITECTURE.md
-  SECURITY.md
+UPI-offline-mesh/
+├── .mvn/
+│   └── wrapper/
+│       └── maven-wrapper.properties
+├── docs/
+│   ├── API.md
+│   ├── ARCHITECTURE.md
+│   └── SECURITY.md
+├── src/
+│   ├── main/
+│   │   ├── java/com/demo/upimesh/
+│   │   │   ├── controller/
+│   │   │   │   ├── ApiController.java
+│   │   │   │   └── DashboardController.java
+│   │   │   ├── crypto/
+│   │   │   │   ├── HybridCryptoService.java
+│   │   │   │   └── ServerKeyHolder.java
+│   │   │   ├── model/
+│   │   │   │   ├── Account.java
+│   │   │   │   ├── AccountRepository.java
+│   │   │   │   ├── MeshPacket.java
+│   │   │   │   ├── PaymentInstruction.java
+│   │   │   │   ├── Transaction.java
+│   │   │   │   └── TransactionRepository.java
+│   │   │   ├── service/
+│   │   │   │   ├── BridgeIngestionService.java
+│   │   │   │   ├── DemoService.java
+│   │   │   │   ├── IdempotencyService.java
+│   │   │   │   ├── MeshSimulatorService.java
+│   │   │   │   ├── SettlementService.java
+│   │   │   │   └── VirtualDevice.java
+│   │   │   └── UpiMeshApplication.java
+│   │   └── resources/
+│   │       ├── templates/
+│   │       │   └── dashboard.html
+│   │       └── application.properties
+│   └── test/
+│       └── java/com/demo/upimesh/
+│           ├── HybridCryptoTest.java
+│           └── IdempotencyConcurrencyTest.java
+├── .gitignore
+├── LICENSE
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+└── README.md
 ```
+
+The tree omits generated output (such as `target/`) and Git internals.
 
 ## Configuration
 
